@@ -1,0 +1,110 @@
+---
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(MASS)
+```
+
+**Summary: **
+During this experiment I will be gathering data from two different sources and 
+merging them to identify what factors impact player's  salaries in the National 
+Basketball Assosiation (NBA). I will be performing a stepwise selection methods
+to properly decide what is the best model. 
+
+NOTE: This experiment can be greatly improved. Due to the limited space for the 
+supplement, I will only be looking at AIC in  this experiment. Again, this is 
+not advised as there are many other factors to consider during model selection, 
+such as BIC, Mallows Cp, Adjusted R-squared, cross-validation, etc.
+
+Due to limited space, I suggest to look at the rmd-script in my github using this
+link:https://github.com/asetti2002/ds-supplement
+
+
+
+```{r}
+stats <- read.csv('Stats.csv')
+salaries <- read.csv('Salaries.csv')
+head(stats,2)
+head(salaries,2)
+```
+
+```{r}
+# perfomed an inner join to remove all of the values
+stats_and_salaries <- merge(stats, salaries, by = "Player")
+
+# renaming the column for simplicity
+stats_and_salaries <- stats_and_salaries %>% rename(SALARY = X2023.24)
+
+# Dropping the unnecessary columns
+df <- subset(stats_and_salaries, select = -c(X2024.25, 
+                                                     X2025.26, 
+                                                     X2026.27, 
+                                                     X2027.28, 
+                                                     X2028.29, 
+                                                     Guaranteed, 
+                                                     X.9999))
+# dropping the null values 
+#(NOTE: THIS IS NOT IDEAL TO DROP EVERYTHING. HOWEVER, THIS IS A BASIC EXPERIMENT)
+df <- subset(df, !is.na(SALARY))
+# replacing the dollar sign or comma and changing the type of the variable
+df$SALARY <- as.numeric(gsub("\\$", "", df$SALARY))
+df$PTS <- as.numeric(gsub("\\,", "", df$PTS))
+df$REB <- as.numeric(gsub("\\,", "", df$REB))
+df$MIN <- as.numeric(gsub("\\,", "", df$MIN))
+
+
+```
+
+
+
+```{r, include=TRUE}
+plot(df$PTS, df$SALARY, main="Points vs Salary", xlab="Points", ylab="Salary")
+```
+
+We can see that the players that do not have as many points normally do not have a larger salary. This is true vice-versa as well. 
+
+
+```{r, include=TRUE}
+model0 = lm(SALARY~1,data=df)
+modelfull = lm(SALARY~PTS+REB+AST+BLK+STL+FG.+X3PM+TO+GP+MIN+FTM+X2PM++A.TO+PF,data=df)
+```
+
+
+```{r, include=TRUE}
+stepAIC(model0,scope=list(lower=model0,upper=modelfull),direction="forward")
+stepAIC(modelfull,scope=list(lower=model0,upper=modelfull),direction="backward")
+stepAIC(modelfull,scope=list(lower=model0,upper=modelfull),direction="both")
+```
+
+
+
+During this short experiment we are able to see the best regression model to 
+identify what are the contributing factors for salary. When running all of the 
+types of stepwise we actually get the same model. 
+
+The explanatory variables based on the model were: PTS, REB, AST, X3PM, GP, FTM, 
+A.TO.; 
+
+(Points, Rebounds, Assists, 3-pointers Made, Games Played, Free Throws Made,Assists to Turnovers)
+
+Regresstion Equation: 
+y^ = 4447601 + 7521(PTS) + 13464(REB) + 11216(AST) + 29029(X3PM) - 170558(GP)
++ 24637(FTM) + 757681(A.TO)
+
+NOTE: I want to note again that this is not advised only looking at the AIC as 
+there is other criteria to consider. 
+
+
+**DATA SOURCES: **
+
+SALARY DATA LINK: https://www.basketball-reference.com/contracts/players.html
+
+NBA PLAYER STATISTICS LINK: https://www.fantasypros.com/nba/stats/overall.php
+
+
+
